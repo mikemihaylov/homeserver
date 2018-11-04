@@ -1,0 +1,154 @@
+version: "3.6"
+services:
+  portainer:
+    image: portainer/portainer
+    container_name: portainer
+    restart: always
+    command: -H unix:///var/run/docker.sock
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /docker/containers/portainer/data:/data
+      - /docker/shared:/shared
+    environment:
+      - TZ=${TZ}
+
+  sabnzbd:
+    image: "linuxserver/sabnzbd"
+    container_name: "sabnzbd"
+    volumes:
+      - /docker/containers/sabnzbd:/config
+      - /nas/Media/completed:/downloads
+      - /nas/Media/incomplete:/incomplete-downloads
+      - /docker/shared:/shared
+    ports:
+        - "8080:8080"
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+  sonarr:
+    image: "linuxserver/sonarr"
+    container_name: "sonarr"
+    volumes:
+      - /docker/containers/sonarr:/config
+      - /nas/Media/completed:/downloads
+      - /nas/Media/TV:/tv
+      - "/etc/localtime:/etc/localtime:ro"
+      - /docker/shared:/shared
+    ports:
+        - "8989:8989"
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+  radarr:
+    image: "linuxserver/radarr"
+    container_name: "radarr"
+    volumes:
+      - /docker/containers/radarr:/config
+      - /nas/Media/completed:/downloads
+      - /nas/Media/Movies:/movies
+      - "/etc/localtime:/etc/localtime:ro"
+      - /docker/shared:/shared
+    ports:
+      - "7878:7878"
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+  organizr:
+    container_name: organizr
+    restart: always
+    image: lsiocommunity/organizr
+    volumes:
+      - /docker/containers/organizr:/config
+      - /docker/shared:/shared
+    ports:
+      - "80:80"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+  watchtower:
+    container_name: watchtower
+    restart: always
+    image: v2tec/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --schedule "0 0 4 * * *" --cleanup 
+
+  tautulli:
+    container_name: tautulli
+    restart: always
+    image: linuxserver/tautulli
+    volumes:
+      - /docker/containers/tautulli/config:/config
+      - /docker/containers/tautulli/logs:/logs:ro
+      - /docker/shared:/shared
+    ports:
+      - "8181:8181"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+  homeassistant:
+    container_name: homeassistant
+    restart: always
+    image: homeassistant/home-assistant
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev/ttyUSB1:/dev/ttyUSB1
+      - /dev/ttyACM0:/dev/ttyACM0
+    volumes:
+      - /docker/containers/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/shared:/shared
+    ports:
+      - "8123:8123"
+    privileged: true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ} 
+
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+      - "8090:8090"
+    env_file:
+      - '/docker/containers/influxdb/env.influxdb'
+    volumes:
+      - /docker/containers/influxdb/data:/var/lib/infuxdb
+  
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    links:
+      - influxdb
+    volumes:
+      - /docker/containers/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro    
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    env_file:
+      - '/docker/containers/grafana/env.grafana'
+    links:
+      - influxdb
+    volumes:
+      - /docker/containers/grafana/data:/var/lib/grafana
+       
